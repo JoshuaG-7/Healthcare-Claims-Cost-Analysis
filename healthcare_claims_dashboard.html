@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthcare Claims & Cost Analysis Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Clash+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #484f58;
+    --teal: #39d353;
+    --blue: #58a6ff;
+    --amber: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Space Grotesk', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+  }
+
+  .header {
+    padding: 2rem 2.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .header-left h1 {
+    font-family: var(--display);
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    line-height: 1.1;
+    margin-bottom: 0.4rem;
+  }
+
+  .header-left h1 span { color: var(--teal); }
+
+  .header-left p {
+    font-size: 0.68rem;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .header-right {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .hstat { text-align: right; }
+  .hstat-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); margin-bottom: 2px; }
+  .hstat-val { font-family: var(--display); font-size: 1.1rem; font-weight: 600; color: var(--text); }
+
+  .filters {
+    padding: 0.75rem 2.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .filter-group { display: flex; align-items: center; gap: 0.5rem; }
+  .filter-group label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); }
+  .filter-group select {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .main { padding: 1.5rem 2.5rem; }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .kpi.teal::after { background: var(--teal); }
+  .kpi.blue::after { background: var(--blue); }
+  .kpi.amber::after { background: var(--amber); }
+  .kpi.red::after { background: var(--red); }
+  .kpi.purple::after { background: var(--purple); }
+
+  .kpi-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); margin-bottom: 0.5rem; }
+  .kpi-value { font-family: var(--display); font-size: 1.7rem; font-weight: 700; line-height: 1; margin-bottom: 0.25rem; }
+  .kpi.teal .kpi-value { color: var(--teal); }
+  .kpi.blue .kpi-value { color: var(--blue); }
+  .kpi.amber .kpi-value { color: var(--amber); }
+  .kpi.red .kpi-value { color: var(--red); }
+  .kpi.purple .kpi-value { color: var(--purple); }
+  .kpi-sub { font-size: 0.6rem; color: var(--text3); }
+
+  .grid-2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.1rem;
+  }
+
+  .card-title {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .card-title span {
+    font-family: var(--display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  canvas { width: 100% !important; }
+
+  .claims-table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
+  .claims-table th {
+    text-transform: uppercase;
+    font-size: 0.56rem;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    font-weight: 400;
+    text-align: left;
+    padding: 0 0 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .claims-table td {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--surface2);
+    color: var(--text);
+    vertical-align: middle;
+    font-size: 0.68rem;
+  }
+  .claims-table tr:last-child td { border-bottom: none; }
+
+  .pct-bar-wrap { width: 60px; height: 4px; background: var(--surface2); border-radius: 2px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .pct-bar { height: 100%; border-radius: 2px; }
+
+  .badge {
+    font-size: 0.56rem;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .badge.high { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge.med  { background: rgba(210,153,34,0.15); color: var(--amber); }
+  .badge.low  { background: rgba(57,211,83,0.15); color: var(--teal); }
+
+  .anomaly-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--surface2);
+    font-size: 0.68rem;
+  }
+  .anomaly-row:last-child { border-bottom: none; }
+  .anomaly-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .anomaly-label { flex: 1; color: var(--text2); }
+  .anomaly-val { font-family: var(--display); font-weight: 600; font-size: 0.85rem; }
+
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 0.9rem 2.5rem;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Healthcare <span>Claims</span><br>& Cost Analysis</h1>
+    <p>HCUP / Kaggle Insurance Dataset · FY 2023–24</p>
+  </div>
+  <div class="header-right">
+    <div class="hstat">
+      <div class="hstat-label">Total claims</div>
+      <div class="hstat-val" id="hstat1">142,830</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-label">Total cost</div>
+      <div class="hstat-val" id="hstat2">$4.2B</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-label">Providers</div>
+      <div class="hstat-val">318</div>
+    </div>
+  </div>
+</div>
+
+<div class="filters">
+  <div class="filter-group">
+    <label>Claim Type</label>
+    <select id="claimFilter" onchange="applyFilters()">
+      <option value="all">All Claims</option>
+      <option value="inpatient">Inpatient</option>
+      <option value="outpatient">Outpatient</option>
+      <option value="emergency">Emergency</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Region</label>
+    <select id="regionFilter" onchange="applyFilters()">
+      <option value="all">All Regions</option>
+      <option value="northeast">Northeast</option>
+      <option value="south">South</option>
+      <option value="midwest">Midwest</option>
+      <option value="west">West</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Period</label>
+    <select id="periodFilter" onchange="applyFilters()">
+      <option value="fy2324">FY 2023–24</option>
+      <option value="fy2223">FY 2022–23</option>
+      <option value="fy2122">FY 2021–22</option>
+    </select>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="kpi-row">
+    <div class="kpi teal">
+      <div class="kpi-label">Avg claim cost</div>
+      <div class="kpi-value" id="kpi1">$29.4K</div>
+      <div class="kpi-sub">Per procedure</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Denial rate</div>
+      <div class="kpi-value" id="kpi2">14.2%</div>
+      <div class="kpi-sub">▲ 1.8% vs prior yr</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">Avg processing days</div>
+      <div class="kpi-value" id="kpi3">18.3</div>
+      <div class="kpi-sub">▼ 2.1 days vs prior yr</div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-label">Top procedure cost</div>
+      <div class="kpi-value" id="kpi4">$94.2K</div>
+      <div class="kpi-sub">Cardiac surgery</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">Cost savings flagged</div>
+      <div class="kpi-value" id="kpi5">$18.7M</div>
+      <div class="kpi-sub">Via anomaly detection</div>
+    </div>
+  </div>
+
+  <!-- Row 1 -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Monthly claim volume & avg cost <span>FY 2023–24</span></div>
+      <canvas id="lineChart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Claim distribution by type <span>Volume %</span></div>
+      <canvas id="doughnutChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Top 8 procedures by avg cost</div>
+      <canvas id="barChart" height="260"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Denial rate by provider type</div>
+      <table class="claims-table">
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>Denial rate</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Private Clinic</td>
+            <td>
+              <div class="pct-bar-wrap"><div class="pct-bar" style="width:82%;background:var(--red)"></div></div>
+              <strong>24.6%</strong>
+            </td>
+            <td><span class="badge high">High</span></td>
+          </tr>
+          <tr>
+            <td>Specialty Hospital</td>
+            <td>
+              <div class="pct-bar-wrap"><div class="pct-bar" style="width:65%;background:var(--red)"></div></div>
+              <strong>19.4%</strong>
+            </td>
+            <td><span class="badge high">High</span></td>
+          </tr>
+          <tr>
+            <td>Urgent Care</td>
+            <td>
+              <div class="pct-bar-wrap"><div class="pct-bar" style="width:48%;background:var(--amber)"></div></div>
+              <strong>14.8%</strong>
+            </td>
+            <td><span class="badge med">Med</span></td>
+          </tr>
+          <tr>
+            <td>General Hospital</td>
+            <td>
+              <div class="pct-bar-wrap"><div class="pct-bar" style="width:38%;background:var(--amber)"></div></div>
+              <strong>11.2%</strong>
+            </td>
+            <td><span class="badge med">Med</span></td>
+          </tr>
+          <tr>
+            <td>Community Health</td>
+            <td>
+              <div class="pct-bar-wrap"><div class="pct-bar" style="width:22%;background:var(--teal)"></div></div>
+              <strong>6.8%</strong>
+            </td>
+            <td><span class="badge low">Low</span></td>
+          </tr>
+          <tr>
+            <td>Telehealth</td>
+            <td>
+              <div class="pct-bar-wrap"><div class="pct-bar" style="width:14%;background:var(--teal)"></div></div>
+              <strong>4.2%</strong>
+            </td>
+            <td><span class="badge low">Low</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Cost anomalies flagged</div>
+      <div class="anomaly-row">
+        <div class="anomaly-dot" style="background:var(--red)"></div>
+        <div class="anomaly-label">Duplicate billing detected</div>
+        <div class="anomaly-val" style="color:var(--red)">$6.2M</div>
+      </div>
+      <div class="anomaly-row">
+        <div class="anomaly-dot" style="background:var(--red)"></div>
+        <div class="anomaly-label">Unbundling violations</div>
+        <div class="anomaly-val" style="color:var(--red)">$4.8M</div>
+      </div>
+      <div class="anomaly-row">
+        <div class="anomaly-dot" style="background:var(--amber)"></div>
+        <div class="anomaly-label">Upcoded procedures</div>
+        <div class="anomaly-val" style="color:var(--amber)">$3.9M</div>
+      </div>
+      <div class="anomaly-row">
+        <div class="anomaly-dot" style="background:var(--amber)"></div>
+        <div class="anomaly-label">Outlier cost per claim</div>
+        <div class="anomaly-val" style="color:var(--amber)">$2.1M</div>
+      </div>
+      <div class="anomaly-row">
+        <div class="anomaly-dot" style="background:var(--purple)"></div>
+        <div class="anomaly-label">High-frequency same-day claims</div>
+        <div class="anomaly-val" style="color:var(--purple)">$1.7M</div>
+      </div>
+      <div class="anomaly-row" style="margin-top:0.75rem; padding-top:0.75rem; border-top: 1px solid var(--border);">
+        <div class="anomaly-label" style="font-weight:500; color:var(--text);">Total flagged savings</div>
+        <div class="anomaly-val" style="color:var(--teal)">$18.7M</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <span>Data source: HCUP / Kaggle Healthcare Insurance Dataset</span>
+  <span>Built with Python · SQL · Tableau · Power BI</span>
+</div>
+
+<script>
+const months = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+
+const baseVolume   = [10200,11400,10800,12100,11600,13200,12400,11800,13600,12900,14100,13700];
+const baseCost     = [27.1,28.4,27.8,29.2,28.6,30.1,29.8,28.9,31.2,30.4,32.1,31.6];
+
+const lineCtx = document.getElementById('lineChart').getContext('2d');
+const lineChart = new Chart(lineCtx, {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [
+      {
+        type: 'bar',
+        label: 'Claim Volume',
+        data: baseVolume,
+        backgroundColor: 'rgba(88,166,255,0.18)',
+        borderColor: 'rgba(88,166,255,0.4)',
+        borderWidth: 1,
+        borderRadius: 2,
+        yAxisID: 'y',
+      },
+      {
+        type: 'line',
+        label: 'Avg Cost ($K)',
+        data: baseCost,
+        borderColor: '#39d353',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#39d353',
+        tension: 0.4,
+        yAxisID: 'y2',
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { labels: { font: { family: 'JetBrains Mono', size: 10 }, color: '#8b949e', boxWidth: 12, padding: 12 } }
+    },
+    scales: {
+      x: { grid: { color: '#21262d' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#484f58' } },
+      y: { grid: { color: '#21262d' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#484f58' }, position: 'left' },
+      y2: { grid: { display: false }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#484f58', callback: v => '$' + v + 'K' }, position: 'right' }
+    }
+  }
+});
+
+const doughCtx = document.getElementById('doughnutChart').getContext('2d');
+new Chart(doughCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Inpatient', 'Outpatient', 'Emergency', 'Telehealth', 'Preventive'],
+    datasets: [{
+      data: [38, 29, 18, 9, 6],
+      backgroundColor: ['#58a6ff','#39d353','#f85149','#bc8cff','#d29922'],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '60%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { family: 'JetBrains Mono', size: 10 }, color: '#8b949e', padding: 12, boxWidth: 10 } }
+    }
+  }
+});
+
+const barCtx = document.getElementById('barChart').getContext('2d');
+new Chart(barCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Cardiac Surgery','Joint Replacement','Spinal Fusion','Cancer Treatment','Organ Transplant','Dialysis','ICU Stay','MRI/Imaging'],
+    datasets: [{
+      label: 'Avg Cost ($K)',
+      data: [94.2, 67.8, 58.4, 52.1, 48.6, 38.2, 31.4, 12.8],
+      backgroundColor: ['#f85149','#f85149','#d29922','#d29922','#d29922','#58a6ff','#58a6ff','#39d353'],
+      borderRadius: 2,
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#21262d' }, ticks: { font: { family: 'JetBrains Mono', size: 9 }, color: '#484f58', callback: v => '$' + v + 'K' } },
+      y: { grid: { display: false }, ticks: { font: { family: 'JetBrains Mono', size: 9 }, color: '#8b949e' } }
+    }
+  }
+});
+
+const kpiData = {
+  all:        { cost: '$29.4K', denial: '14.2%', days: '18.3', top: '$94.2K', savings: '$18.7M', vol: '142,830', total: '$4.2B' },
+  inpatient:  { cost: '$52.1K', denial: '11.4%', days: '22.1', top: '$94.2K', savings: '$9.4M',  vol: '54,275',  total: '$2.8B' },
+  outpatient: { cost: '$8.4K',  denial: '16.8%', days: '14.2', top: '$38.2K', savings: '$4.2M',  vol: '41,421',  total: '$348M' },
+  emergency:  { cost: '$18.2K', denial: '19.1%', days: '11.8', top: '$48.6K', savings: '$3.8M',  vol: '25,709',  total: '$468M' },
+};
+
+function applyFilters() {
+  const claim  = document.getElementById('claimFilter').value;
+  const period = document.getElementById('periodFilter').value;
+  const d = kpiData[claim] || kpiData.all;
+
+  document.getElementById('kpi1').textContent = d.cost;
+  document.getElementById('kpi2').textContent = d.denial;
+  document.getElementById('kpi3').textContent = d.days;
+  document.getElementById('kpi4').textContent = d.top;
+  document.getElementById('kpi5').textContent = d.savings;
+  document.getElementById('hstat1').textContent = d.vol;
+  document.getElementById('hstat2').textContent = d.total;
+
+  const offset = { fy2324: 0, fy2223: -0.08, fy2122: -0.16 }[period] || 0;
+  lineChart.data.datasets[0].data = baseVolume.map(v => Math.round(v * (1 + offset)));
+  lineChart.data.datasets[1].data = baseCost.map(v => parseFloat((v * (1 + offset)).toFixed(1)));
+  lineChart.update();
+}
+</script>
+</body>
+</html>
